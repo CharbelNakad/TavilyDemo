@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tavily vs Basic Agent - Dual Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 1px;
+            min-height: 0;
+        }
+
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 18px;
+            border-bottom: 2px solid #f0f0f0;
+            position: relative;
+        }
+
+        .basic-agent .chat-header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .tavily-agent .chat-header {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+            color: white;
+        }
+
+        .capability-indicator {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.assistant {
+            text-align: left;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .user .message-content {
+            background: #007AFF;
+            color: white;
+        }
+
+        .assistant .message-content {
+            background: white;
+            border: 1px solid #e0e0e0;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Enhanced markdown styling for clean, organized look */
+        .message-content h1, .message-content h2, .message-content h3 {
+            margin: 20px 0 12px 0;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1.3;
+        }
+
+        .message-content h1 {
+            font-size: 1.5em;
+            border-bottom: 3px solid #f0f0f0;
+            padding-bottom: 12px;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+
+        .message-content h2 {
+            font-size: 1.3em;
+            color: #333;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .message-content h3 {
+            font-size: 1.15em;
+            color: #444;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .message-content ul, .message-content ol {
+            margin: 16px 0;
+            padding-left: 24px;
+            line-height: 1.6;
+        }
+
+        .message-content ol {
+            counter-reset: item;
+        }
+
+        .message-content ol > li {
+            display: block;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .message-content ol > li:before {
+            content: counter(item) ".";
+            counter-increment: item;
+            font-weight: 600;
+            color: #666;
+            margin-right: 8px;
+        }
+
+        .message-content ul > li {
+            margin: 8px 0;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .message-content ul > li:before {
+            content: "•";
+            color: #666;
+            font-weight: bold;
+            position: absolute;
+            left: -16px;
+        }
+
+        .message-content li {
+            padding-left: 4px;
+        }
+
+        .message-content p {
+            margin: 14px 0;
+            line-height: 1.7;
+            color: #333;
+        }
+
+        .message-content p:first-child {
+            margin-top: 0;
+        }
+
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-content strong {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .message-content em {
+            font-style: italic;
+            color: #666;
+        }
+
+        .message-content code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #d73502;
+            border: 1px solid #e9ecef;
+        }
+
+        .message-content blockquote {
+            border-left: 4px solid #ddd;
+            margin: 12px 0;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            font-style: italic;
+            color: #666;
+        }
+
+        .message-content pre {
+            background: #2c3e50;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .message-content pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .message-content a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
+            color: #0052a3;
+        }
+
+        .message-content .highlight {
+            background: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .thinking-indicator, .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f0f0f0;
+            border-radius: 18px;
+            max-width: 80%;
+            color: #666;
+            font-style: italic;
+        }
+
+        .dots {
+            display: inline-flex;
+            margin-left: 8px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #999;
+            margin: 0 2px;
+            animation: wave 1.4s infinite ease-in-out;
+        }
+
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 60%, 100% { transform: initial; }
+            30% { transform: translateY(-10px); }
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 2px solid #007AFF;
+            position: relative;
+            flex-shrink: 0;
+            z-index: 100;
+            min-height: 80px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 25px;
+            padding: 8px 20px;
+            border: 2px solid #007AFF;
+            transition: all 0.2s ease;
+            min-height: 50px;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #007AFF;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        #messageInput {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px 0;
+            font-size: 16px;
+            outline: none;
+            resize: none;
+            max-height: 120px;
+            line-height: 1.4;
+        }
+
+        #sendButton {
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            margin-left: 10px;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            background: #0056CC;
+            transform: scale(1.05);
+        }
+
+        #sendButton:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #007AFF, transparent);
+            transform: translateX(-100%);
+            animation: loading 2s infinite;
+        }
+
+        @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .word-animation {
+            opacity: 0;
+            animation: wordAppear 0.1s ease-out forwards;
+        }
+
+        @keyframes wordAppear {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-indicator {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            color: #2d3436;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .agent-comparison {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+            animation: fadeInDown 0.5s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                gap: 1px;
+            }
+            
+            .chat-panel {
+                min-height: 50vh;
+            }
+            
+            .agent-comparison {
+                position: relative;
+                top: auto;
+                left: auto;
+                transform: none;
+                margin: 10px;
+                text-align: center;
+            }
+        }
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="agent-comparison">
+        🤖 Basic Agent (Training Data Only) vs 🔍 Tavily Agent (Real-time Search)
+    </div>
+
+    <div class="container">
+        <!-- Basic Agent Panel -->
+        <div class="chat-panel basic-agent">
+            <div class="status-bar hidden">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="chat-header">
+                🤖 Basic Agent
+                <div class="capability-indicator">Limited to training data • No real-time access</div>
+            </div>
+            <div class="chat-messages" id="basicMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Hello! I'm the Basic Agent. I can only use information from my training data and cannot access real-time information. How can I help you today?
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tavily Agent Panel -->
+        <div class="chat-panel tavily-agent">
+            <div class="status-bar hidden">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="chat-header">
+                🔍 Tavily-Enhanced Agent
+                <div class="capability-indicator">Real-time web search • Current information access</div>
+            </div>
+            <div class="chat-messages" id="tavilyMessages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Hello! I'm the Tavily-Enhanced Agent. I have access to real-time web search and can provide you with current, up-to-date information. What would you like to know?
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Input -->
+    <div class="chat-input-container">
+        <div class="input-wrapper">
+            <textarea 
+                id="messageInput" 
+                placeholder="Type your message to both agents..."
+                rows="1"
+            ></textarea>
+            <button id="sendButton">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class DualChatInterface {
+            constructor() {
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.basicMessages = document.getElementById('basicMessages');
+                this.tavilyMessages = document.getElementById('tavilyMessages');
+                this.isProcessing = false;
+                
+                this.initializeEventListeners();
+            }
+
+            parseMarkdown(text) {
+                // Enhanced markdown parser for better formatting
+                let html = text;
+                
+                // Split into lines for better processing
+                let lines = html.split('\n');
+                let processedLines = [];
+                let inList = false;
+                let listItems = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i];
+                    
+                    // Handle headers
+                    if (line.match(/^### /)) {
+                        if (inList) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        processedLines.push('<h3>' + line.replace(/^### /, '') + '</h3>');
+                    } else if (line.match(/^## /)) {
+                        if (inList) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        processedLines.push('<h2>' + line.replace(/^## /, '') + '</h2>');
+                    } else if (line.match(/^# /)) {
+                        if (inList) {
+                            processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            listItems = [];
+                            inList = false;
+                        }
+                        processedLines.push('<h1>' + line.replace(/^# /, '') + '</h1>');
+                    }
+                    // Handle numbered lists
+                    else if (line.match(/^\d+\.\s+/)) {
+                        if (inList && listItems.length > 0) {
+                            processedLines.push('<ol>' + listItems.join('') + '</ol>');
+                            listItems = [];
+                        }
+                        listItems.push('<li>' + line.replace(/^\d+\.\s+/, '') + '</li>');
+                        inList = true;
+                    }
+                    // Handle bullet points
+                    else if (line.match(/^[-*+]\s+/)) {
+                        if (!inList) {
+                            inList = true;
+                            listItems = [];
+                        }
+                        listItems.push('<li>' + line.replace(/^[-*+]\s+/, '') + '</li>');
+                    }
+                    // Handle regular paragraphs
+                    else if (line.trim() !== '') {
+                        if (inList) {
+                            if (line.match(/^\d+\./)) {
+                                processedLines.push('<ol>' + listItems.join('') + '</ol>');
+                            } else {
+                                processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            }
+                            listItems = [];
+                            inList = false;
+                        }
+                        processedLines.push('<p>' + line + '</p>');
+                    }
+                    // Handle empty lines
+                    else {
+                        if (inList) {
+                            if (listItems.length > 0 && listItems[0].match(/^\d+\./)) {
+                                processedLines.push('<ol>' + listItems.join('') + '</ol>');
+                            } else {
+                                processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                            }
+                            listItems = [];
+                            inList = false;
+                        }
+                        processedLines.push('<br>');
+                    }
+                }
+                
+                // Handle remaining list items
+                if (inList && listItems.length > 0) {
+                    if (listItems[0].includes('1.')) {
+                        processedLines.push('<ol>' + listItems.join('') + '</ol>');
+                    } else {
+                        processedLines.push('<ul>' + listItems.join('') + '</ul>');
+                    }
+                }
+                
+                html = processedLines.join('');
+                
+                // Apply inline formatting
+                html = html
+                    // Bold text
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+                    
+                    // Italic text
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/_(.*?)_/g, '<em>$1</em>')
+                    
+                    // Code inline
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    
+                    // Links
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+                return html;
+            }
+
+            initializeEventListeners() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                
+                this.messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Auto-resize textarea
+                this.messageInput.addEventListener('input', () => {
+                    this.messageInput.style.height = 'auto';
+                    this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
+                });
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message || this.isProcessing) return;
+
+                this.isProcessing = true;
+                this.updateUIState(true);
+
+                // Add user message to both panels
+                this.addMessage('user', message, this.basicMessages);
+                this.addMessage('user', message, this.tavilyMessages);
+
+                // Clear input
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+
+                // Start both agent streams simultaneously
+                await Promise.all([
+                    this.streamFromAgent('basic', message),
+                    this.streamFromAgent('tavily', message)
+                ]);
+
+                this.isProcessing = false;
+                this.updateUIState(false);
+            }
+
+            async streamFromAgent(agentType, message) {
+                const messagesContainer = agentType === 'basic' ? this.basicMessages : this.tavilyMessages;
+                let currentMessageElement = null;
+                let searchIndicator = null;
+                let fullContent = '';
+
+                try {
+                    const response = await fetch(`/chat/${agentType}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message })
+                    });
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    
+                                    switch (data.type) {
+                                        case 'thinking':
+                                            this.showThinkingIndicator(messagesContainer, agentType);
+                                            this.showStatusBar(agentType);
+                                            break;
+                                            
+                                        case 'typing':
+                                            this.removeThinkingIndicator(messagesContainer);
+                                            if (agentType === 'tavily') {
+                                                searchIndicator = this.showSearchIndicator(messagesContainer);
+                                            }
+                                            currentMessageElement = this.createStreamingMessage(messagesContainer);
+                                            fullContent = '';
+                                            break;
+                                            
+                                        case 'word':
+                                            if (currentMessageElement) {
+                                                fullContent += data.word + (data.is_last ? '' : ' ');
+                                                this.updateStreamingMessage(currentMessageElement, fullContent);
+                                            }
+                                            break;
+                                            
+                                        case 'complete':
+                                            this.hideStatusBar(agentType);
+                                            if (searchIndicator) {
+                                                searchIndicator.remove();
+                                            }
+                                            // Final update with markdown parsing
+                                            if (currentMessageElement && fullContent) {
+                                                currentMessageElement.innerHTML = this.parseMarkdown(fullContent);
+                                            }
+                                            break;
+                                            
+                                        case 'error':
+                                            this.hideStatusBar(agentType);
+                                            this.addMessage('assistant', `Error: ${data.error}`, messagesContainer);
+                                            break;
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing SSE data:', e);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Streaming error:', error);
+                    this.addMessage('assistant', `Connection error: ${error.message}`, messagesContainer);
+                    this.hideStatusBar(agentType);
+                }
+            }
+
+            addMessage(sender, content, container) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                if (sender === 'assistant') {
+                    contentDiv.innerHTML = this.parseMarkdown(content);
+                } else {
+                    contentDiv.textContent = content;
+                }
+                
+                messageDiv.appendChild(contentDiv);
+                container.appendChild(messageDiv);
+                
+                this.scrollToBottom(container);
+                return contentDiv;
+            }
+
+            showThinkingIndicator(container, agentType) {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'message assistant thinking-msg';
+                thinkingDiv.innerHTML = `
+                    <div class="thinking-indicator">
+                        🤔 ${agentType === 'basic' ? 'Processing...' : 'Analyzing query...'}
+                        <div class="dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(thinkingDiv);
+                this.scrollToBottom(container);
+            }
+
+            removeThinkingIndicator(container) {
+                const thinkingMsg = container.querySelector('.thinking-msg');
+                if (thinkingMsg) {
+                    thinkingMsg.remove();
+                }
+            }
+
+            showSearchIndicator(container) {
+                const searchDiv = document.createElement('div');
+                searchDiv.className = 'message assistant';
+                searchDiv.innerHTML = `
+                    <div class="search-indicator">
+                        🔍 Searching the web for current information...
+                    </div>
+                `;
+                
+                container.appendChild(searchDiv);
+                this.scrollToBottom(container);
+                return searchDiv;
+            }
+
+            createStreamingMessage(container) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant';
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                messageDiv.appendChild(contentDiv);
+                container.appendChild(messageDiv);
+                
+                this.scrollToBottom(container);
+                return contentDiv;
+            }
+
+            updateStreamingMessage(messageElement, content) {
+                // Show raw text during streaming (will be converted to markdown at the end)
+                messageElement.textContent = content;
+                this.scrollToBottom(messageElement.closest('.chat-messages'));
+            }
+
+            showStatusBar(agentType) {
+                const panel = document.querySelector(`.${agentType}-agent`);
+                const statusBar = panel.querySelector('.status-bar');
+                statusBar.classList.remove('hidden');
+            }
+
+            hideStatusBar(agentType) {
+                const panel = document.querySelector(`.${agentType}-agent`);
+                const statusBar = panel.querySelector('.status-bar');
+                statusBar.classList.add('hidden');
+            }
+
+            updateUIState(isProcessing) {
+                this.sendButton.disabled = isProcessing;
+                this.messageInput.disabled = isProcessing;
+                
+                if (isProcessing) {
+                    this.sendButton.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="2"/>
+                        </svg>
+                    `;
+                } else {
+                    this.sendButton.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+                        </svg>
+                    `;
+                }
+            }
+
+            scrollToBottom(container) {
+                setTimeout(() => {
+                    container.scrollTop = container.scrollHeight;
+                }, 10);
+            }
+        }
+
+        // Initialize the chat interface when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new DualChatInterface();
+        });
+    </script>
+</body>
+</html> 
