@@ -1,0 +1,12 @@
+langchain==0.2.1
+langchain-openai==0.1.8
+langgraph==0.0.50
+tavily-python==0.3.2
+python-dotenv==1.0.1
+openai==1.28.0
+httpx==0.27.2
+fastapi==0.104.1
+uvicorn==0.24.0
+matplotlib
+notebook
+ipython 
